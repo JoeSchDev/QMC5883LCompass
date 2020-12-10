@@ -159,10 +159,25 @@ void QMC5883LCompass::setCalibration(int x_min, int x_max, int y_min, int y_max,
 	
 	@since v0.1;
 **/
-void QMC5883LCompass::read(){
+byte QMC5883LCompass::read(){
+	byte status;
+	
+	Wire.beginTransmission(_ADDR);
+	Wire.write(0x06);
+	int err = Wire.endTransmission();
+	if (err) {
+		return 0x00;
+	}
+	Wire.requestFrom(_ADDR, (byte)1);
+	if (Wire.available() != 1)
+		return 0x00;
+	status = Wire.read();
+	if ((status & STATUS_DRDY) != STATUS_DRDY) {
+		return status;
+	}
 	Wire.beginTransmission(_ADDR);
 	Wire.write(0x00);
-	int err = Wire.endTransmission();
+	err = Wire.endTransmission();
 	if (!err) {
 		Wire.requestFrom(_ADDR, (byte)6);
 		_vRaw[0] = (int)(int16_t)(Wire.read() | Wire.read() << 8);
@@ -180,6 +195,7 @@ void QMC5883LCompass::read(){
 		//byte overflow = Wire.read() & 0x02;
 		//return overflow << 2;
 	}
+	return status;
 }
 
 /**
