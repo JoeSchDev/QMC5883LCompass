@@ -69,7 +69,7 @@ QMC5883LCompass::QMC5883LCompass() {
 void QMC5883LCompass::init(){
 	Wire.begin();
 	_writeReg(0x0B,0x01);
-	setMode(0x01,0x0C,0x10,0X00);
+	setMode(MODE_CONTROL_CONTINUES, DATA_RATE_10HZ, FULL_SCALE_8G, OVER_SAMPLE_RATIO_512, POL_PNT, INT_ENB);
 }
 
 
@@ -109,8 +109,9 @@ void QMC5883LCompass::_writeReg(byte r, byte v){
 	@since v0.1;
 **/
 // Set chip mode
-void QMC5883LCompass::setMode(byte mode, byte odr, byte rng, byte osr){
+void QMC5883LCompass::setMode(byte mode, byte odr, byte rng, byte osr, byte rolpn, byte int_enb){
 	_writeReg(0x09,mode|odr|rng|osr);
+	_writeReg(0x0a, rolpn|int_enb);
 }
 
 
@@ -132,6 +133,7 @@ void QMC5883LCompass::setSmoothing(byte steps, bool adv){
 	_smoothAdvanced = (adv == true) ? true : false;
 }
 
+#ifdef CALIBRATION
 /**
     SET CALIBRATION
 	Set calibration values for more accurate readings
@@ -150,7 +152,7 @@ void QMC5883LCompass::setCalibration(int x_min, int x_max, int y_min, int y_max,
 	_vCalibration[2][0] = z_min;
 	_vCalibration[2][1] = z_max;
 }
-
+#endif
 
 
 /**
@@ -183,11 +185,11 @@ byte QMC5883LCompass::read(){
 		_vRaw[0] = (int)(int16_t)(Wire.read() | Wire.read() << 8);
 		_vRaw[1] = (int)(int16_t)(Wire.read() | Wire.read() << 8);
 		_vRaw[2] = (int)(int16_t)(Wire.read() | Wire.read() << 8);
-
+#ifdef CALIBRATION
 		if ( _calibrationUse ) {
 			_applyCalibration();
 		}
-		
+#endif		
 		if ( _smoothUse ) {
 			_smoothing();
 		}
@@ -198,6 +200,7 @@ byte QMC5883LCompass::read(){
 	return status;
 }
 
+#ifdef CALLIBRATION
 /**
     APPLY CALIBRATION
 	This function uses the calibration data provided via @see setCalibration() to calculate more
@@ -224,11 +227,11 @@ void QMC5883LCompass::_applyCalibration(){
 	float x_scale = (float)avg_delta / x_avg_delta;
 	float y_scale = (float)avg_delta / y_avg_delta;
 	float z_scale = (float)avg_delta / z_avg_delta;
-
 	_vCalibrated[0] = (_vRaw[0] - x_offset) * x_scale;
 	_vCalibrated[1] = (_vRaw[1] - y_offset) * y_scale;
 	_vCalibrated[2] = (_vRaw[2] - z_offset) * z_scale;
 }
+#endif	
 
 
 /**
@@ -259,7 +262,11 @@ void QMC5883LCompass::_smoothing(){
 		if ( _vTotals[i] != 0 ) {
 			_vTotals[i] = _vTotals[i] - _vHistory[_vScan][i];
 		}
+#ifdef CALIBRATION
 		_vHistory[_vScan][i] = ( _calibrationUse ) ? _vCalibrated[i] : _vRaw[i];
+#else
+		_vHistory[_vScan][i] = _vRaw[i];
+#endif		
 		_vTotals[i] = _vTotals[i] + _vHistory[_vScan][i];
 		
 		if ( _smoothAdvanced ) {
@@ -328,9 +335,10 @@ int QMC5883LCompass::getZ(){
 int QMC5883LCompass::_get(int i){
 	if ( _smoothUse ) 
 		return _vSmooth[i];
-	
+#ifdef CALIBRATION	
 	if ( _calibrationUse )
 		return _vCalibrated[i];
+#endif		
 
 	return _vRaw[i];
 }
@@ -368,7 +376,7 @@ byte QMC5883LCompass::getBearing(int azimuth){
 	return sexdec;
 }
 
-
+#ifdef CALIBRATION
 /**
 	This will take the location of the azimuth as calculated in getBearing() and then
 	produce an array of chars as a text representation of the direction.
@@ -399,3 +407,4 @@ void QMC5883LCompass::getDirection(char* myArray, int azimuth){
 	myArray[1] = _bearings[d][1];
 	myArray[2] = _bearings[d][2];
 }
+#endif

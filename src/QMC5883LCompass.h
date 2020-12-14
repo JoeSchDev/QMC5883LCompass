@@ -24,15 +24,19 @@
 #define STATUS_OVL   0x02
 #define STATUS_DOR   0x04
 
+#define SOFT_RST	0x80
+#define POL_PNT		0x40
+#define INT_ENB		0x00
+
 class QMC5883LCompass{
 	
   public:
     QMC5883LCompass();
 	void init();
     void setADDR(byte b);
-    void setMode(byte mode, byte odr, byte rng, byte osr);
+    void setMode(byte mode, byte odr, byte rng, byte osr, byte rolpn, byte int_enb);
 	void setSmoothing(byte steps, bool adv);
-	void setCalibration(int x_min, int x_max, int y_min, int y_max, int z_min, int z_max);
+//	void setCalibration(int x_min, int x_max, int y_min, int y_max, int z_min, int z_max);
     void setReset();
     byte read();
 	int getX();
@@ -55,6 +59,7 @@ class QMC5883LCompass{
 	long _vTotals[3] = {0,0,0};
 	int _vSmooth[3] = {0,0,0};
 	void _smoothing();
+#ifdef CALIBRATION
 	bool _calibrationUse = false;
 	int _vCalibration[3][2];
 	int _vCalibrated[3];
@@ -77,6 +82,7 @@ class QMC5883LCompass{
 		{' ', 'N', 'W'},
 		{'N', 'N', 'W'},
 	};
+#endif
 	
 	
 	
